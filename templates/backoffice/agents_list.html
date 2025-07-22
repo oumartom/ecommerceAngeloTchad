@@ -1,0 +1,207 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}Agents - Back Office Angelo Tchad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestion des Agents</h2>
+        <a href="{% url 'backoffice:agent_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Ajouter un agent
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-users mr-1"></i>
+            Liste des Agents
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-inline mb-3">
+                <div class="input-group mr-2">
+                    <input type="text" name="search" class="form-control" placeholder="Rechercher un agent..." value="{{ search }}">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <a href="{% url 'backoffice:agents_list' %}" class="btn btn-outline-danger">Réinitialiser</a>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered" id="agentsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom d'utilisateur</th>
+                            <th>Nom complet</th>
+                            <th>Email</th>
+                            <th>Rôle</th>
+                            <th>Téléphone</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for agent in page_obj %}
+                        <tr>
+                            <td>{{ agent.id }}</td>
+                            <td>{{ agent.username }}</td>
+                            <td>{{ agent.get_full_name|default:"-" }}</td>
+                            <td>{{ agent.email|default:"-" }}</td>
+                            <td>
+                                <span class="badge badge-{% if agent.agentprofile.role == 'admin' %}danger{% elif agent.agentprofile.role == 'manager' %}warning{% elif agent.agentprofile.role == 'supervisor' %}info{% else %}secondary{% endif %}">
+                                    {{ agent.agentprofile.get_role_display }}
+                                </span>
+                            </td>
+                            <td>{{ agent.agentprofile.phone_number|default:"-" }}</td>
+                            <td>
+                                <span id="status-{{ agent.id }}" class="badge badge-{% if agent.agentprofile.is_active %}success{% else %}danger{% endif %}">
+                                    {% if agent.agentprofile.is_active %}Actif{% else %}Inactif{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'backoffice:agent_update' agent.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if agent != request.user %}
+                                <button class="btn btn-sm btn-{% if agent.agentprofile.is_active %}danger{% else %}success{% endif %}" 
+                                        onclick="toggleAgentStatus({{ agent.id }})">
+                                    <i class="fas fa-{% if agent.agentprofile.is_active %}ban{% else %}check{% endif %}"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">Aucun agent trouvé.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">Précédent</a></li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search %}&search={{ search }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">Suivant</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Statistiques des agents -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Total Agents</div>
+                            <div class="text-lg font-weight-bold">{{ page_obj.paginator.count }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Agents Actifs</div>
+                            <div class="text-lg font-weight-bold">{{ page_obj.object_list|length }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Administrateurs</div>
+                            <div class="text-lg font-weight-bold">
+                                {% for agent in page_obj.object_list %}
+                                    {% if agent.agentprofile.role == 'admin' %}1{% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Managers</div>
+                            <div class="text-lg font-weight-bold">
+                                {% for agent in page_obj.object_list %}
+                                    {% if agent.agentprofile.role == 'manager' %}1{% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAgentStatus(agentId) {
+    if (confirm('Êtes-vous sûr de vouloir changer le statut de cet agent ?')) {
+        $.ajax({
+            type: "POST",
+            url: "{% url 'backoffice:agent_toggle_status' 0 %}".replace('0', agentId),
+            data: {
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(data) {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert("Une erreur est survenue: " + error);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
+

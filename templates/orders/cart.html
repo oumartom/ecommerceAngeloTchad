@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Panier - Angelo Tchad{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">
+                <i class="fas fa-shopping-cart me-2"></i>
+                Mon Panier
+            </h2>
+        </div>
+    </div>
+    
+    {% if cart_items %}
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Articles dans votre panier ({{ cart_count }} article{{ cart_count|pluralize }})</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        {% for item in cart_items %}
+                            <div class="border-bottom p-3" id="cart-item-{{ item.product.id }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        {% if item.product.image %}
+                                            <img src="{{ item.product.image.url }}" 
+                                                 class="img-fluid rounded" 
+                                                 alt="{{ item.product.name }}"
+                                                 style="height: 80px; width: 80px; object-fit: cover;">
+                                        {% else %}
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center"
+                                                 style="height: 80px; width: 80px;">
+                                                <i class="fas fa-image text-muted"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <h6 class="mb-1">{{ item.product.name }}</h6>
+                                        <small class="text-muted">{{ item.product.price }} FCFA / unité</small>
+                                        {% if item.product.category %}
+                                            <br><small class="text-muted">{{ item.product.category.name }}</small>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <div class="input-group input-group-sm">
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="updateQuantity({{ item.product.id }}, {{ item.quantity }} - 1)">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="number" class="form-control text-center" 
+                                                   value="{{ item.quantity }}" 
+                                                   min="1" max="{{ item.product.stock_quantity }}"
+                                                   id="quantity-{{ item.product.id }}"
+                                                   onchange="updateQuantity({{ item.product.id }}, this.value)">
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="updateQuantity({{ item.product.id }}, {{ item.quantity }} + 1)">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Stock: {{ item.product.stock_quantity }}</small>
+                                    </div>
+                                    
+                                    <div class="col-md-2 text-end">
+                                        <div class="fw-bold text-primary" id="subtotal-{{ item.product.id }}">
+                                            {{ item.subtotal }} FCFA
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-1 text-end">
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="removeFromCart({{ item.product.id }})"
+                                                title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="{% url 'orders:home' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Continuer mes achats
+                    </a>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Résumé de la commande</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Sous-total ({{ cart_count }} article{{ cart_count|pluralize }}):</span>
+                            <span class="fw-bold" id="cart-total">{{ total }} FCFA</span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Frais de livraison:</span>
+                            <span class="text-success">Gratuit</span>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between mb-4">
+                            <span class="h5">Total:</span>
+                            <span class="h5 text-primary" id="final-total">{{ total }} FCFA</span>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <a href="{% url 'orders:checkout' %}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-credit-card me-2"></i>
+                                Passer la commande
+                            </a>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Paiement sécurisé
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Informations de livraison -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-truck me-2"></i>
+                            Informations de livraison
+                        </h6>
+                        <ul class="list-unstyled small mb-0">
+                            <li><i class="fas fa-check text-success me-2"></i>Livraison gratuite</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Livraison sous 24-48h</li>
+                            <li><i class="fas fa-check text-success me-2"></i>Suivi de commande</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-shopping-cart text-muted mb-4" style="font-size: 5rem;"></i>
+                    <h4 class="text-muted mb-3">Votre panier est vide</h4>
+                    <p class="text-muted mb-4">
+                        Découvrez nos produits et ajoutez-les à votre panier pour passer commande.
+                    </p>
+                    <a href="{% url 'orders:home' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-shopping-bag me-2"></i>
+                        Voir nos produits
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateQuantity(productId, newQuantity) {
+        newQuantity = parseInt(newQuantity);
+        
+        if (newQuantity < 0) {
+            newQuantity = 0;
+        }
+        
+        $.post('{% url "orders:update_cart" %}', {
+            'product_id': productId,
+            'quantity': newQuantity,
+            'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+        }, function(data) {
+            if (data.success) {
+                if (newQuantity === 0) {
+                    // Supprimer l'élément du DOM
+                    $('#cart-item-' + productId).fadeOut(300, function() {
+                        $(this).remove();
+                        // Recharger la page si le panier est vide
+                        if (data.cart_count === 0) {
+                            location.reload();
+                        }
+                    });
+                } else {
+                    // Mettre à jour la quantité affichée
+                    $('#quantity-' + productId).val(newQuantity);
+                    
+                    // Recalculer et afficher le sous-total (approximatif)
+                    // Dans un vrai projet, il faudrait récupérer le prix depuis le serveur
+                    updateCartDisplay();
+                }
+                
+                $('#cart-count').text(data.cart_count);
+                showNotification('Panier mis à jour', 'success');
+            } else {
+                showNotification(data.message, 'error');
+                // Restaurer la valeur précédente
+                $('#quantity-' + productId).val($('#quantity-' + productId).data('previous-value'));
+            }
+        }).fail(function() {
+            showNotification('Erreur lors de la mise à jour', 'error');
+        });
+    }
+    
+    function removeFromCart(productId) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
+            updateQuantity(productId, 0);
+        }
+    }
+    
+    function updateCartDisplay() {
+        // Cette fonction pourrait recalculer les totaux côté client
+        // Pour plus de précision, il serait mieux de faire un appel AJAX
+        // pour récupérer les nouveaux totaux depuis le serveur
+    }
+    
+    $(document).ready(function() {
+        // Sauvegarder les valeurs initiales pour la restauration en cas d'erreur
+        $('input[type="number"]').each(function() {
+            $(this).data('previous-value', $(this).val());
+        });
+        
+        // Mettre à jour la valeur précédente quand l'utilisateur change la quantité
+        $('input[type="number"]').on('focus', function() {
+            $(this).data('previous-value', $(this).val());
+        });
+    });
+</script>
+{% endblock %}
+

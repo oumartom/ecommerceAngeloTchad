@@ -1,0 +1,164 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}Produits - Back Office Angelo Tchad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestion des Produits</h2>
+        <a href="#" class="btn btn-primary" data-toggle="modal" data-target="#addProductModal">
+            <i class="fas fa-plus"></i> Ajouter un produit
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-table mr-1"></i>
+            Liste des Produits
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-inline mb-3">
+                <div class="input-group mr-2">
+                    <input type="text" name="search" class="form-control" placeholder="Rechercher un produit..." value="{{ search }}">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <div class="form-check mr-2">
+                    <input class="form-check-input" type="checkbox" name="low_stock" value="true" id="lowStockCheck" {% if low_stock %}checked{% endif %} onchange="this.form.submit()">
+                    <label class="form-check-label" for="lowStockCheck">
+                        Stock faible (< 5)
+                    </label>
+                </div>
+                <a href="{% url 'backoffice:products_list' %}" class="btn btn-outline-danger">Réinitialiser</a>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered" id="productsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Prix</th>
+                            <th>Stock</th>
+                            <th>Catégorie</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in page_obj %}
+                        <tr>
+                            <td>{{ product.id }}</td>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.price|floatformat:0 }} FCFA</td>
+                            <td>
+                                <span id="stock-{{ product.id }}" class="{% if product.stock_quantity <= 5 %}text-danger font-weight-bold{% endif %}">
+                                    {{ product.stock_quantity }}
+                                </span>
+                                <button class="btn btn-sm btn-outline-info ml-2" onclick="editStock({{ product.id }}, {{ product.stock_quantity }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                            <td>{{ product.category.name }}</td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a>
+                                <a href="#" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
+                                <a href="#" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Aucun produit trouvé.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">Précédent</a></li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search %}&search={{ search }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if low_stock %}&low_stock=true{% endif %}">Suivant</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour l'édition du stock -->
+<div class="modal fade" id="editStockModal" tabindex="-1" role="dialog" aria-labelledby="editStockModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editStockModalLabel">Modifier le Stock</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editStockForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editProductId" name="product_id">
+                    <div class="form-group">
+                        <label for="newStockQuantity">Nouvelle quantité en stock:</label>
+                        <input type="number" class="form-control" id="newStockQuantity" name="stock" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editStock(productId, currentStock) {
+    document.getElementById("editProductId").value = productId;
+    document.getElementById("newStockQuantity").value = currentStock;
+    $("#editStockModal").modal("show");
+}
+
+$("#editStockForm").submit(function(e) {
+    e.preventDefault();
+    var form = $(this);
+    var url = "{% url 'backoffice:update_stock' %}";
+    
+    $.ajax({
+        type: "POST",
+        url: url,
+        data: form.serialize(),
+        success: function(data) {
+            if (data.success) {
+                alert(data.message);
+                $("#stock-" + data.product_id).text(data.new_stock);
+                $("#editStockModal").modal("hide");
+                location.reload(); // Recharger la page pour mettre à jour les alertes de stock faible
+            } else {
+                alert(data.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert("Une erreur est survenue: " + error);
+        }
+    });
+});
+</script>
+{% endblock %}
+

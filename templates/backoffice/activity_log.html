@@ -1,0 +1,172 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}Journal d'Activité - Back Office Angelo Tchad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Journal d'Activité</h2>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-history mr-1"></i>
+            Activités Récentes
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-inline mb-3">
+                <div class="form-group mr-2">
+                    <select name="agent" class="form-control">
+                        <option value="">Tous les agents</option>
+                        {% for agent in agents %}
+                        <option value="{{ agent.id }}" {% if agent_filter == agent.id|stringformat:"s" %}selected{% endif %}>
+                            {{ agent.get_full_name|default:agent.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group mr-2">
+                    <select name="action" class="form-control">
+                        <option value="">Toutes les actions</option>
+                        {% for value, label in action_choices %}
+                        <option value="{{ value }}" {% if action_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary mr-2">Filtrer</button>
+                <a href="{% url 'backoffice:activity_log' %}" class="btn btn-outline-danger">Réinitialiser</a>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered" id="activityTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Date/Heure</th>
+                            <th>Agent</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>Commande</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in page_obj %}
+                        <tr>
+                            <td>{{ log.timestamp|date:"d/m/Y H:i:s" }}</td>
+                            <td>{{ log.agent.get_full_name|default:log.agent.username }}</td>
+                            <td>
+                                <span class="badge badge-{% if log.action == 'login' %}success{% elif log.action == 'logout' %}secondary{% elif log.action == 'order_confirmed' %}info{% elif log.action == 'receipt_generated' %}warning{% else %}primary{% endif %}">
+                                    {{ log.get_action_display }}
+                                </span>
+                            </td>
+                            <td>{{ log.description }}</td>
+                            <td>
+                                {% if log.order_id %}
+                                    <a href="{% url 'backoffice:order_detail' log.order_id %}" class="btn btn-sm btn-outline-info">
+                                        Voir commande
+                                    </a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Aucune activité trouvée.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if agent_filter %}&agent={{ agent_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}">Précédent</a></li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if agent_filter %}&agent={{ agent_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if agent_filter %}&agent={{ agent_filter }}{% endif %}{% if action_filter %}&action={{ action_filter }}{% endif %}">Suivant</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Statistiques d'activité -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Connexions Aujourd'hui</div>
+                            <div class="text-lg font-weight-bold">{{ today_logins }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-sign-in-alt"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Commandes Confirmées</div>
+                            <div class="text-lg font-weight-bold">{{ today_confirmations }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Reçus Générés</div>
+                            <div class="text-lg font-weight-bold">{{ today_receipts }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Total Activités</div>
+                            <div class="text-lg font-weight-bold">{{ total_activities }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

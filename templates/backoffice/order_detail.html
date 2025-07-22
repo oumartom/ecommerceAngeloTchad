@@ -1,0 +1,196 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}Commande {{ order.order_number }} - Back Office Angelo Tchad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- En-tête -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>Commande {{ order.order_number }}</h2>
+                    <p class="text-muted mb-0">Créée le {{ order.created_at|date:"d/m/Y à H:i" }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'backoffice:orders_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Retour à la liste
+                    </a>
+                    {% if order.status in 'confirmed,preparing,ready,delivered' %}
+                    <a href="{% url 'backoffice:generate_receipt' order.id %}" class="btn btn-success">
+                        <i class="fas fa-file-pdf"></i> Générer le reçu
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Informations de la commande -->
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Informations de la commande</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Numéro:</strong> {{ order.order_number }}</p>
+                                    <p><strong>Statut:</strong> 
+                                        <span class="badge badge-{% if order.status == 'pending' %}warning{% elif order.status == 'confirmed' %}info{% elif order.status == 'delivered' %}success{% else %}secondary{% endif %}">
+                                            {{ order.status_display }}
+                                        </span>
+                                    </p>
+                                    <p><strong>Montant total:</strong> {{ order.total_amount|floatformat:0 }} FCFA</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Date de création:</strong> {{ order.created_at|date:"d/m/Y à H:i" }}</p>
+                                    {% if order.confirmed_at %}
+                                    <p><strong>Date de confirmation:</strong> {{ order.confirmed_at|date:"d/m/Y à H:i" }}</p>
+                                    {% endif %}
+                                    {% if order.delivered_at %}
+                                    <p><strong>Date de livraison:</strong> {{ order.delivered_at|date:"d/m/Y à H:i" }}</p>
+                                    {% endif %}
+                                    {% if order.assigned_agent %}
+                                    <p><strong>Agent assigné:</strong> {{ order.assigned_agent.get_full_name|default:order.assigned_agent.username }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if order.notes %}
+                            <div class="row">
+                                <div class="col-12">
+                                    <p><strong>Notes:</strong></p>
+                                    <p class="text-muted">{{ order.notes }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Articles de la commande -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Articles commandés</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Produit</th>
+                                            <th>Prix unitaire</th>
+                                            <th>Quantité</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in order.items.all %}
+                                        <tr>
+                                            <td>{{ item.product.name }}</td>
+                                            <td>{{ item.unit_price|floatformat:0 }} FCFA</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>{{ item.subtotal|floatformat:0 }} FCFA</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-info">
+                                            <th colspan="3">Total</th>
+                                            <th>{{ order.total_amount|floatformat:0 }} FCFA</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-md-4">
+                    <!-- Informations client -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Client</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Nom:</strong> {{ order.client.full_name }}</p>
+                            <p><strong>Téléphone:</strong> {{ order.client.phone_number }}</p>
+                            <p><strong>Quartier:</strong> {{ order.client.neighborhood }}</p>
+                            {% if order.client.address_details %}
+                            <p><strong>Adresse:</strong> {{ order.client.address_details }}</p>
+                            {% endif %}
+                            <a href="{% url 'backoffice:client_detail' order.client.id %}" class="btn btn-sm btn-outline-primary">
+                                Voir le profil client
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_status">
+                                
+                                <div class="form-group">
+                                    <label for="status">Changer le statut:</label>
+                                    <select name="status" id="status" class="form-control">
+                                        {% for value, label in status_choices %}
+                                        <option value="{{ value }}" {% if value == order.status %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-save"></i> Mettre à jour
+                                </button>
+                            </form>
+
+                            {% if not order.assigned_agent %}
+                            <hr>
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="assign_agent">
+                                <button type="submit" class="btn btn-info btn-block">
+                                    <i class="fas fa-user-plus"></i> M'assigner cette commande
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            {% if order.status in 'confirmed,preparing,ready,delivered' %}
+                            <hr>
+                            <a href="{% url 'backoffice:generate_receipt' order.id %}" class="btn btn-success btn-block">
+                                <i class="fas fa-file-pdf"></i> Télécharger le reçu
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Informations système -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Informations système</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Stock déduit:</strong> 
+                                {% if order.stock_deducted %}
+                                <span class="text-success">Oui</span>
+                                {% else %}
+                                <span class="text-warning">Non</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Dernière modification:</strong> {{ order.updated_at|date:"d/m/Y à H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

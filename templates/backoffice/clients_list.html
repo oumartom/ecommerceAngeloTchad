@@ -1,0 +1,154 @@
+{% extends 'backoffice/base.html' %}
+{% load static %}
+
+{% block title %}Clients - Back Office Angelo Tchad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestion des Clients</h2>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-users mr-1"></i>
+            Liste des Clients
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-inline mb-3">
+                <div class="input-group mr-2">
+                    <input type="text" name="search" class="form-control" placeholder="Rechercher un client..." value="{{ search }}">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+                <a href="{% url 'backoffice:clients_list' %}" class="btn btn-outline-danger">Réinitialiser</a>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered" id="clientsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom complet</th>
+                            <th>Téléphone</th>
+                            <th>Quartier</th>
+                            <th>Nb Commandes</th>
+                            <th>Total Dépensé</th>
+                            <th>Dernière Commande</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for client in page_obj %}
+                        <tr>
+                            <td>{{ client.id }}</td>
+                            <td>{{ client.full_name }}</td>
+                            <td>{{ client.phone_number }}</td>
+                            <td>{{ client.neighborhood }}</td>
+                            <td>
+                                <span class="badge badge-info">{{ client.orders_count }}</span>
+                            </td>
+                            <td>
+                                {% if client.total_spent %}
+                                    {{ client.total_spent|floatformat:0 }} FCFA
+                                {% else %}
+                                    0 FCFA
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if client.last_order_date %}
+                                    {{ client.last_order_date|date:"d/m/Y" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'backoffice:client_detail' client.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> Voir
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">Aucun client trouvé.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">Précédent</a></li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ i }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search %}&search={{ search }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">Suivant</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Statistiques des clients -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Total Clients</div>
+                            <div class="text-lg font-weight-bold">{{ total_clients }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Clients Actifs (30j)</div>
+                            <div class="text-lg font-weight-bold">{{ active_clients }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <div class="text-white-50 small">Nouveaux Clients (7j)</div>
+                            <div class="text-lg font-weight-bold">{{ new_clients }}</div>
+                        </div>
+                        <div class="fa-3x text-white-25">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Back Office - Angelo Tchad{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #1e3a8a;
+            --secondary-color: #f8fafc;
+            --accent-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --sidebar-width: 250px;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--secondary-color);
+            font-size: 14px;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+            color: white;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+        
+        .sidebar-nav .nav-link {
+            color: rgba(255,255,255,0.8);
+            padding: 0.75rem 1.5rem;
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-nav .nav-link:hover,
+        .sidebar-nav .nav-link.active {
+            color: white;
+            background-color: rgba(255,255,255,0.1);
+            border-left: 3px solid white;
+        }
+        
+        .sidebar-nav .nav-link i {
+            width: 20px;
+            margin-right: 10px;
+        }
+        
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+        
+        .top-navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .content-wrapper {
+            padding: 0 1.5rem 2rem;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-radius: 8px;
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: 600;
+        }
+        
+        .stats-card {
+            transition: transform 0.2s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.4em 0.8em;
+        }
+        
+        .btn {
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #1e40af;
+            border-color: #1e40af;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .mobile-menu-btn {
+                display: block !important;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+        
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .sidebar-overlay.show {
+            display: block;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h4 class="mb-0">
+                <i class="fas fa-cog me-2"></i>
+                Back Office
+            </h4>
+            <small class="text-light opacity-75">Angelo Tchad</small>
+        </div>
+        
+        <ul class="nav flex-column sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                   href="{% url 'backoffice:dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if 'orders' in request.resolver_match.url_name %}active{% endif %}" 
+                   href="{% url 'backoffice:orders_list' %}">
+                    <i class="fas fa-shopping-cart"></i>
+                    Commandes
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if 'products' in request.resolver_match.url_name %}active{% endif %}" 
+                   href="{% url 'backoffice:products_list' %}">
+                    <i class="fas fa-box"></i>
+                    Produits & Stock
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if 'clients' in request.resolver_match.url_name %}active{% endif %}" 
+                   href="{% url 'backoffice:clients_list' %}">
+                    <i class="fas fa-users"></i>
+                    Clients
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'activity_log' %}active{% endif %}" 
+                   href="{% url 'backoffice:activity_log' %}">
+                    <i class="fas fa-history"></i>
+                    Journal d'activité
+                </a>
+            </li>
+            
+            <li class="nav-item mt-4">
+                <a class="nav-link" href="{% url 'orders:home' %}" target="_blank">
+                    <i class="fas fa-external-link-alt"></i>
+                    Site client
+                </a>
+            </li>
+            
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/" target="_blank">
+                    <i class="fas fa-cogs"></i>
+                    Administration
+                </a>
+            </li>
+        </ul>
+        
+        <div class="mt-auto p-3">
+            <div class="d-flex align-items-center mb-2">
+                <div class="bg-white bg-opacity-20 rounded-circle p-2 me-2">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div>
+                    <small class="d-block">{{ user.get_full_name|default:user.username }}</small>
+                    <small class="text-light opacity-75">{{ user.agentprofile.get_role_display }}</small>
+                </div>
+            </div>
+            <a href="{% url 'backoffice:logout' %}" class="btn btn-outline-light btn-sm w-100">
+                <i class="fas fa-sign-out-alt me-1"></i>
+                Déconnexion
+            </a>
+        </div>
+    </nav>
+    
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <!-- Main content -->
+    <div class="main-content">
+        <!-- Top navbar -->
+        <div class="top-navbar d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary mobile-menu-btn me-3" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h5 class="mb-0">{% block page_title %}Dashboard{% endblock %}</h5>
+            </div>
+            
+            <div class="d-flex align-items-center">
+                <span class="text-muted me-3">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ "now"|date:"d/m/Y" }}
+                </span>
+                <span class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    <span id="current-time"></span>
+                </span>
+            </div>
+        </div>
+        
+        <!-- Messages -->
+        {% if messages %}
+            <div class="content-wrapper">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <!-- Page content -->
+        <div class="content-wrapper">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <script>
+        // Mobile menu toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.add('show');
+            overlay.classList.add('show');
+        });
+        
+        document.getElementById('sidebarOverlay').addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+        });
+        
+        // Current time display
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('current-time').textContent = timeString;
+        }
+        
+        updateTime();
+        setInterval(updateTime, 60000); // Update every minute
+        
+        // Auto-dismiss alerts
+        setTimeout(function() {
+            $('.alert').alert('close');
+        }, 5000);
+        
+        // Fonction pour afficher les notifications
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const notification = `
+                <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+                     style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            $('body').append(notification);
+            
+            setTimeout(function() {
+                $('.alert').alert('close');
+            }, 3000);
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
