@@ -1,0 +1,6 @@
+.product-image {
+    height: 200px;
+    object-fit: cover; /* ou try contain selon l'effet voulu */
+    width: 100%;
+    border-radius: 0.375rem; /* même style que Bootstrap pour les cartes */
+}
