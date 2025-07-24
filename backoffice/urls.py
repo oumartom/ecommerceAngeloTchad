@@ -32,4 +32,5 @@ urlpatterns = [
     
     # Journal d'activité
     path('activity/', views.activity_log, name='activity_log'),
+    
 ]
