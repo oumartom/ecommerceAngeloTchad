@@ -119,32 +119,41 @@ class Order(models.Model):
         super().save(*args, **kwargs)
     
     def deduct_stock(self):
-        """Déduit le stock des produits de la commande"""
         for item in self.items.all():
             product = item.product
-            if product.stock_quantity >= item.quantity:
-                product.stock_quantity -= item.quantity
+            product.stock_quantity -= item.quantity
+            try:
                 product.save()
-                print(f"Stock déduit pour {product.name}: -{item.quantity} (nouveau stock: {product.stock_quantity})")
-            else:
-                raise ValidationError(
-                    f"Stock insuffisant pour {product.name}. "
-                    f"Stock disponible: {product.stock_quantity}, "
-                    f"Quantité demandée: {item.quantity}"
-                )
+            except Exception as e:
+                print(f"Erreur lors du save de {product}: {e}")
+                raise
+    # def deduct_stock(self):
+    #     """Déduit le stock des produits de la commande"""
+    #     for item in self.items.all():
+    #         product = item.product
+    #         if product.stock_quantity >= item.quantity:
+    #             product.stock_quantity -= item.quantity
+    #             product.save()
+    #             print(f"Stock déduit pour {product.name}: -{item.quantity} (nouveau stock: {product.stock_quantity})")
+    #         else:
+    #             raise ValidationError(
+    #                 f"Stock insuffisant pour {product.name}. "
+    #                 f"Stock disponible: {product.stock_quantity}, "
+    #                 f"Quantité demandée: {item.quantity}"
+    #             )
         
-        self.stock_deducted = True
+    #     self.stock_deducted = True
         
-        # Log de l'activité
-        try:
-            from backoffice.models import ActivityLog
-            ActivityLog.objects.create(
-                action='stock_deducted',
-                description=f'Stock déduit automatiquement pour la commande {self.order_number}',
-                order_id=self.id
-            )
-        except:
-            pass  # En cas d'erreur, ne pas bloquer la sauvegarde
+    #     # Log de l'activité
+    #     try:
+    #         from backoffice.models import ActivityLog
+    #         ActivityLog.objects.create(
+    #             action='stock_deducted',
+    #             description=f'Stock déduit automatiquement pour la commande {self.order_number}',
+    #             order_id=self.id
+    #         )
+    #     except:
+    #         pass  # En cas d'erreur, ne pas bloquer la sauvegarde
     
     def restore_stock(self):
         """Restaure le stock des produits en cas d'annulation"""
