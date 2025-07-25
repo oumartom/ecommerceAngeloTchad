@@ -24,8 +24,14 @@ SECRET_KEY = 'django-insecure-y46b7ed(8b^=g-8l%s8ma$sxj(ttukfo2uca8^he-0g*k$u-6%
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = [
+    "https://angelotchad.pimpact.net",
+]
+ALLOWED_HOSTS = [
+                    "angelotchad.pimpact.net",
+                    "www.angelotchad.pimpact.net",  # si applicable
+                    "51.20.2.153",  
+                    ]
 
 
 # Application definition
