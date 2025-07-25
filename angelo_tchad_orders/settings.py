@@ -30,7 +30,8 @@ CSRF_TRUSTED_ORIGINS = [
 ALLOWED_HOSTS = [
                     "angelotchad.pimpact.net",
                     "www.angelotchad.pimpact.net",  # si applicable
-                    "51.20.2.153",  
+                    "51.20.2.153",
+                    "127.0.0.1",
                     ]
 
 
