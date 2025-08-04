@@ -172,7 +172,10 @@ def checkout(request):
     
     if request.method == 'POST':
         form = ClientForm(request.POST)
+        print("Numéro soumis:", request.POST.get('phone_number'))  # Debug
         if form.is_valid():
+            print("Numéro validé:", form.cleaned_data['phone_number'])  # Debug
+            # ... reste du code ...
             try:
                 with transaction.atomic():
                     # Créer ou récupérer le client

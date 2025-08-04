@@ -5,26 +5,35 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from products.models import Product
 import uuid
-
+from django.core.validators import RegexValidator
 class Client(models.Model):
     first_name = models.CharField(max_length=100, verbose_name="Prénom")
     last_name = models.CharField(max_length=100, verbose_name="Nom")
     
-    # Validation du numéro de téléphone tchadien
+  # Validation du numéro de téléphone tchadien (avec ou sans +235)
     phone_regex = RegexValidator(
-        regex=r'^\+235\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}$',
-        message="Le numéro doit être au format: +235 XX XX XX XX"
-    )
+            regex=r'^(\+235\s?)?\d{2}(\s?\d{2}){3}$',
+            message="Entrez un numéro valide au format : +235 XX XX XX XX ou 66 XX XX XX"
+        )
+
     phone_number = models.CharField(
-        validators=[phone_regex],
-        max_length=17,
-        verbose_name="Numéro de téléphone"
-    )
-    
+            validators=[phone_regex],
+            max_length=17,
+            verbose_name="Numéro de téléphone"
+        )
+
     neighborhood = models.CharField(max_length=200, verbose_name="Quartier")
     address_details = models.TextField(blank=True, verbose_name="Détails de l'adresse")
     created_at = models.DateTimeField(auto_now_add=True)
     
+    def format_phone(self):
+        number = self.phone_number.replace(' ', '')
+        if number.startswith('+235'):
+            return '+235 ' + ' '.join([number[4:6], number[6:8], number[8:10], number[10:]])
+        elif len(number) == 8:
+            return '+235 ' + ' '.join([number[0:2], number[2:4], number[4:6], number[6:]])
+        return number
+
     class Meta:
         verbose_name = "Client"
         verbose_name_plural = "Clients"

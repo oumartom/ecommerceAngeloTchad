@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Finaliser la commande - Angelo Tchad{% endblock %}
 
@@ -56,17 +57,28 @@
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3">
                                 <label for="{{ form.phone_number.id_for_label }}" class="form-label">
                                     {{ form.phone_number.label }} <span class="text-danger">*</span>
                                 </label>
-                                {{ form.phone_number }}
-                                <div class="form-text">Format: +235 XX XX XX XX</div>
+                                
+                                <input type="tel"
+                                    name="{{ form.phone_number.name }}"
+                                    id="{{ form.phone_number.id_for_label }}"
+                                    class="form-control"
+                                    placeholder="6X XX XX XX ou 6XXXXXXXX"
+                                    value="{{ form.phone_number.value|default:'' }}"
+                                    required>
+                                
+                                <div class="form-text">Exemples valides: 61 23 45 67 ou 61234567</div>
+
                                 {% if form.phone_number.errors %}
-                                    <div class="text-danger small">{{ form.phone_number.errors.0 }}</div>
+                                    <div class="text-danger small">
+                                        {{ form.phone_number.errors.0 }}
+                                    </div>
                                 {% endif %}
                             </div>
+
                             
                             <div class="col-md-6 mb-3">
                                 <label for="{{ form.neighborhood.id_for_label }}" class="form-label">
@@ -135,16 +147,18 @@
                                     <br>
                                     <small class="text-muted">{{ item.quantity }} x {{ item.product.price }} FCFA</small>
                                 </div>
-                                <small class="fw-bold">{{ item.subtotal }} FCFA</small>
+                                <small class="fw-bold">{{ item.subtotal|floatformat:0|intcomma:" " }} FCFA</small>
+
                             </div>
                         {% endfor %}
                         
                         <hr>
                         
-                        <div class="d-flex justify-content-between mb-2">
+                       <div class="d-flex justify-content-between mb-2">
                             <span>Sous-total:</span>
-                            <span>{{ total }} FCFA</span>
+                            <span>{{ total|floatformat:0|intcomma:" " }} FCFA</span>
                         </div>
+
                         
                         <div class="d-flex justify-content-between mb-2">
                             <span>Frais de livraison:</span>
@@ -153,10 +167,11 @@
                         
                         <hr>
                         
-                        <div class="d-flex justify-content-between mb-3">
+                       <div class="d-flex justify-content-between mb-3">
                             <span class="h5">Total:</span>
-                            <span class="h5 text-primary">{{ total }} FCFA</span>
+                            <span class="h5 text-primary">{{ total|floatformat:0|intcomma:" " }} FCFA</span>
                         </div>
+
                         
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary btn-lg" id="submit-order">

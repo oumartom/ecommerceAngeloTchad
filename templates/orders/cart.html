@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Panier - Angelo Tchad{% endblock %}
 
@@ -40,7 +41,8 @@
                                     
                                     <div class="col-md-4">
                                         <h6 class="mb-1">{{ item.product.name }}</h6>
-                                        <small class="text-muted">{{ item.product.price }} FCFA / unité</small>
+                                        <small class="text-muted">{{ item.product.price|floatformat:0|intcomma:" " }} FCFA / unité</small>
+
                                         {% if item.product.category %}
                                             <br><small class="text-muted">{{ item.product.category.name }}</small>
                                         {% endif %}
@@ -67,7 +69,7 @@
                                     
                                     <div class="col-md-2 text-end">
                                         <div class="fw-bold text-primary" id="subtotal-{{ item.product.id }}">
-                                            {{ item.subtotal }} FCFA
+                                            {{ item.subtotal|floatformat:0|intcomma:" " }} FCFA
                                         </div>
                                     </div>
                                     
@@ -100,7 +102,9 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-3">
                             <span>Sous-total ({{ cart_count }} article{{ cart_count|pluralize }}):</span>
-                            <span class="fw-bold" id="cart-total">{{ total }} FCFA</span>
+                            <span class="fw-bold" id="cart-total">{{ total|floatformat:0|intcomma:" " }} FCFA</span>
+
+
                         </div>
                         
                         <div class="d-flex justify-content-between mb-3">
@@ -112,7 +116,8 @@
                         
                         <div class="d-flex justify-content-between mb-4">
                             <span class="h5">Total:</span>
-                            <span class="h5 text-primary" id="final-total">{{ total }} FCFA</span>
+                            <span class="h5 text-primary" id="final-total">{{ total|floatformat:0|intcomma:" " }} FCFA</span>
+
                         </div>
                         
                         <div class="d-grid">
