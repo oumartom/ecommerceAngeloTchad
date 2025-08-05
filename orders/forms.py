@@ -122,47 +122,67 @@
 from django import forms
 from .models import Client, Order
 
+# class ClientForm(forms.ModelForm):
+#     class Meta:
+#         model = Client
+#         fields = ['first_name', 'last_name', 'phone_number', 'neighborhood', 'address_details']
+#         widgets = {
+#             'first_name': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Votre prénom',
+#                 'required': True
+#             }),
+#             'last_name': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Votre nom',
+#                 'required': True
+#             }),
+#             'phone_number': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': '+235 XX XX XX XX',
+#                 'pattern': r'^\+235\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}$',
+#                 'title': 'Format: +235 XX XX XX XX',
+#                 'required': True
+#             }),
+#             'neighborhood': forms.TextInput(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Votre quartier',
+#                 'required': True
+#             }),
+#             'address_details': forms.Textarea(attrs={
+#                 'class': 'form-control',
+#                 'placeholder': 'Détails de votre adresse (optionnel)',
+#                 'rows': 3
+#             }),
+#         }
+#         labels = {
+#             'first_name': 'Prénom',
+#             'last_name': 'Nom',
+#             'phone_number': 'Numéro de téléphone',
+#             'neighborhood': 'Quartier',
+#             'address_details': 'Détails de l\'adresse'
+#         }
 class ClientForm(forms.ModelForm):
     class Meta:
         model = Client
         fields = ['first_name', 'last_name', 'phone_number', 'neighborhood', 'address_details']
         widgets = {
-            'first_name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Votre prénom',
-                'required': True
-            }),
-            'last_name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Votre nom',
-                'required': True
-            }),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Prénom'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nom'}),
             'phone_number': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': '+235 XX XX XX XX',
-                'pattern': r'^\+235\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}$',
-                'title': 'Format: +235 XX XX XX XX',
-                'required': True
+                'placeholder': '6XXXXXXXX',  # sans +235
             }),
-            'neighborhood': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Votre quartier',
-                'required': True
-            }),
-            'address_details': forms.Textarea(attrs={
-                'class': 'form-control',
-                'placeholder': 'Détails de votre adresse (optionnel)',
-                'rows': 3
-            }),
-        }
-        labels = {
-            'first_name': 'Prénom',
-            'last_name': 'Nom',
-            'phone_number': 'Numéro de téléphone',
-            'neighborhood': 'Quartier',
-            'address_details': 'Détails de l\'adresse'
+            'neighborhood': forms.TextInput(attrs={'class': 'form-control'}),
+            'address_details': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
+    def clean_phone_number(self):
+        phone = self.cleaned_data.get('phone_number')
+        if phone.startswith('+235'):
+            return phone
+        phone = phone.lstrip('0')  # supprime le zéro initial si présent
+        return f'+235{phone}'
 class OrderForm(forms.ModelForm):
     class Meta:
         model = Order

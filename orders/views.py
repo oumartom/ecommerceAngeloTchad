@@ -219,6 +219,71 @@ def checkout(request):
     }
     return render(request, 'orders/checkout.html', context)
 
+# def checkoutd(request, product_id):
+#     product = get_object_or_404(Product, id=product_id)
+
+#     if request.method == 'POST':
+#         form = OrderForm(request.POST)
+#         if form.is_valid():
+#             order = form.save(commit=False)
+#             order.product = product
+#             order.save()
+#             return redirect('confirmation')  # ou autre page
+#     else:
+#         form = OrderForm()
+
+#     messages.success(request, f'Votre commande {order.order_number} a été créée avec succès!')
+#     return redirect('orders:order_success', order_id=order.id)
+def checkoutd(request, product_id):
+    """Commande directe pour un seul produit"""
+    try:
+        product = Product.objects.get(id=product_id, is_active=True)
+    except Product.DoesNotExist:
+        messages.error(request, "Produit introuvable.")
+        return redirect('orders:home')
+
+    quantity = 1
+    subtotal = product.price
+    total = subtotal
+
+    if request.method == 'POST':
+        form = ClientForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Ajouter +235 s’il n’est pas encore là
+                    phone_raw = form.cleaned_data['phone_number']
+                    full_phone = f'+235{phone_raw}' if not phone_raw.startswith('+235') else phone_raw
+
+                    client_data = form.cleaned_data
+                    client, _ = Client.objects.get_or_create(
+                        phone_number=full_phone,
+                        defaults={**client_data, 'phone_number': full_phone}
+                    )
+
+                    order = Order.objects.create(client=client, total_amount=total)
+                    OrderItem.objects.create(order=order, product=product, quantity=quantity, unit_price=product.price)
+
+                    messages.success(request, f"Commande {order.order_number} créée avec succès.")
+                    return redirect('orders:order_success', order_id=order.id)
+            except Exception as e:
+                messages.error(request, "Erreur lors de la commande.")
+                return redirect('orders:checkoutd', product_id=product.id)
+    else:
+        form = ClientForm()
+
+    context = {
+        'form': form,
+        'cart_items': [{
+            'product': product,
+            'quantity': quantity,
+            'subtotal': subtotal,
+        }],
+        'total': total,
+    }
+    return render(request, 'orders/checkoutd.html', context)
+
+
 def order_success(request, order_id):
     """Page de confirmation de commande"""
     order = get_object_or_404(Order, id=order_id)
