@@ -15,11 +15,11 @@ urlpatterns = [
     path('orders/', views.orders_list, name='orders_list'),
     path('orders/<int:order_id>/', views.order_detail, name='order_detail'),
     path('orders/<int:order_id>/receipt/', views.generate_receipt, name='generate_receipt'),
-    
+    path('orders/<int:pk>/delete/', views.order_delete, name='order_delete'),
     # Produits et stock
     path('products/', views.products_list, name='products_list'),
     path('update-stock/', views.update_stock, name='update_stock'),
-    
+    path('export-clients-excel/', views.export_clients_excel, name='export_clients_excel'),
     # Clients
     path('clients/', views.clients_list, name='clients_list'),
     path('clients/<int:client_id>/', views.client_detail, name='client_detail'),
@@ -32,5 +32,6 @@ urlpatterns = [
     
     # Journal d'activité
     path('activity/', views.activity_log, name='activity_log'),
+    
     
 ]

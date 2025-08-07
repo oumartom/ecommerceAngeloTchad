@@ -13,7 +13,7 @@ from products.models import Product
 from .models import AgentProfile, ActivityLog
 from .forms import AgentCreationForm, AgentUpdateForm
 import json
-
+import openpyxl
 def agent_login(request):
     """Page de connexion pour les agents"""
     if request.user.is_authenticated:
@@ -43,16 +43,64 @@ def agent_logout(request):
     messages.success(request, 'Vous avez été déconnecté avec succès.')
     return redirect('backoffice:login')
 
+# @login_required
+# def dashboard(request):
+#     """Dashboard principal avec statistiques"""
+#     # Statistiques générales
+#     total_orders = Order.objects.count()
+#     pending_orders = Order.objects.filter(status='pending').count()
+#     confirmed_orders = Order.objects.filter(status='confirmed').count()
+#     delivered_orders = Order.objects.filter(status='delivered').count()
+    
+#     # Montant total
+#     total_amount = Order.objects.aggregate(
+#         total=Sum('total_amount')
+#     )['total'] or 0
+    
+#     # Commandes récentes
+#     recent_orders = Order.objects.select_related('client').order_by('-created_at')[:10]
+    
+#     # Produits en rupture de stock
+#     low_stock_products = Product.objects.filter(
+#         stock_quantity__lte=5, 
+#         is_active=True
+#     ).order_by('stock_quantity')[:5]
+    
+#     # Statistiques par jour (7 derniers jours)
+#     today = timezone.now().date()
+#     week_ago = today - timedelta(days=7)
+    
+#     daily_stats = []
+#     for i in range(7):
+#         date = week_ago + timedelta(days=i)
+#         orders_count = Order.objects.filter(created_at__date=date).count()
+#         daily_stats.append({
+#             'date': date.strftime('%d/%m'),
+#             'orders': orders_count
+#         })
+    
+#     context = {
+#         'total_orders': total_orders,
+#         'pending_orders': pending_orders,
+#         'confirmed_orders': confirmed_orders,
+#         'delivered_orders': delivered_orders,
+#         'total_amount': total_amount,
+#         'recent_orders': recent_orders,
+#         'low_stock_products': low_stock_products,
+#         'daily_stats': daily_stats,
+#     }
+    
+#     return render(request, 'backoffice/dashboard.html', context)
 @login_required
 def dashboard(request):
     """Dashboard principal avec statistiques"""
-    # Statistiques générales
+    # Statistiques générales commandes
     total_orders = Order.objects.count()
     pending_orders = Order.objects.filter(status='pending').count()
     confirmed_orders = Order.objects.filter(status='confirmed').count()
     delivered_orders = Order.objects.filter(status='delivered').count()
     
-    # Montant total
+    # Montant total des commandes
     total_amount = Order.objects.aggregate(
         total=Sum('total_amount')
     )['total'] or 0
@@ -69,7 +117,6 @@ def dashboard(request):
     # Statistiques par jour (7 derniers jours)
     today = timezone.now().date()
     week_ago = today - timedelta(days=7)
-    
     daily_stats = []
     for i in range(7):
         date = week_ago + timedelta(days=i)
@@ -79,6 +126,15 @@ def dashboard(request):
             'orders': orders_count
         })
     
+    # === Statistiques des clients ===
+    total_clients = Client.objects.count()
+
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    active_clients = Client.objects.filter(created_at__gte=thirty_days_ago).count()
+
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    new_clients = Client.objects.filter(created_at__gte=seven_days_ago).count()
+
     context = {
         'total_orders': total_orders,
         'pending_orders': pending_orders,
@@ -88,8 +144,11 @@ def dashboard(request):
         'recent_orders': recent_orders,
         'low_stock_products': low_stock_products,
         'daily_stats': daily_stats,
+        'total_clients': total_clients,
+        'active_clients': active_clients,
+        'new_clients': new_clients,
     }
-    
+
     return render(request, 'backoffice/dashboard.html', context)
 
 @login_required
@@ -243,34 +302,123 @@ def update_stock(request):
     
     return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})
 
+import openpyxl
+from django.http import HttpResponse
+
+
+def export_clients_excel(request):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Clients"
+
+    # En-têtes
+    headers = ['ID', 'Nom complet', 'Téléphone', 'Quartier', 'Nb Commandes', 'Total Dépensé', 'Dernière Commande']
+    ws.append(headers)
+
+    for client in Client.objects.all():
+        nb_commandes = client.order_set.count()
+        total_depense = sum(order.total_amount for order in client.order_set.all())
+        derniere_commande = client.order_set.order_by('-created_at').first()
+        derniere_commande_date = derniere_commande.created_at.strftime("%d/%m/%Y %H:%M") if derniere_commande else "Aucune"
+
+        row = [
+            client.id,
+            f"{client.first_name} {client.last_name}",
+            client.phone_number,
+            client.neighborhood,
+            nb_commandes,
+            total_depense,
+            derniere_commande_date,
+        ]
+        ws.append(row)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename=clients.xlsx'
+    wb.save(response)
+    return response
+
+def order_delete(request, pk):
+    if request.method == "POST":
+        order = get_object_or_404(Order, pk=pk)
+        order.delete()
+        messages.success(request, "La commande a été supprimée avec succès.")
+        return redirect('backoffice:orders_list')
+    else:
+        messages.error(request, "Méthode non autorisée.")
+        return redirect('backoffice:orders_list')
+    
+from django.db.models import Count, Sum, Max
+
 @login_required
 def clients_list(request):
-    """Liste des clients"""
-    clients = Client.objects.annotate(
-        orders_count=Count('order')
-    ).order_by('-orders_count')
-    
-    # Recherche
-    search = request.GET.get('search')
+    search = request.GET.get('search', '')
+
+    clients = Client.objects.all()
+
     if search:
-        clients = clients.filter(
-            Q(first_name__icontains=search) |
-            Q(last_name__icontains=search) |
-            Q(phone_number__icontains=search) |
-            Q(neighborhood__icontains=search)
-        )
-    
-    # Pagination
-    paginator = Paginator(clients, 20)
+        clients = clients.filter(full_name__icontains=search)
+
+    # Annoter les infos supplémentaires sur chaque client
+    clients = clients.annotate(
+        orders_count=Count('order'),
+        total_spent=Sum('order__total_amount'),
+        last_order_date=Max('order__created_at')
+    )
+
+    paginator = Paginator(clients, 10)  # 10 clients par page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
+    # === Statistiques des clients ===
+    total_clients = Client.objects.count()
+
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    active_clients = Client.objects.filter(created_at__gte=thirty_days_ago).count()
+
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    new_clients = Client.objects.filter(created_at__gte=seven_days_ago).count()
+
     context = {
         'page_obj': page_obj,
         'search': search,
+        'total_clients': total_clients,
+        'active_clients': active_clients,
+        'new_clients': new_clients,
     }
-    
+
     return render(request, 'backoffice/clients_list.html', context)
+
+
+# @login_required
+# def clients_list(request):
+#     """Liste des clients"""
+#     clients = Client.objects.annotate(
+#         orders_count=Count('order')
+#     ).order_by('-orders_count')
+    
+#     # Recherche
+#     search = request.GET.get('search')
+#     if search:
+#         clients = clients.filter(
+#             Q(first_name__icontains=search) |
+#             Q(last_name__icontains=search) |
+#             Q(phone_number__icontains=search) |
+#             Q(neighborhood__icontains=search)
+#         )
+    
+#     # Pagination
+#     paginator = Paginator(clients, 20)
+#     page_number = request.GET.get('page')
+#     page_obj = paginator.get_page(page_number)
+    
+#     context = {
+#         'page_obj': page_obj,
+#         'search': search,
+#     }
+    
+#     return render(request, 'backoffice/clients_list.html', context)
 
 @login_required
 def client_detail(request, client_id):
@@ -489,4 +637,8 @@ def agent_toggle_status(request, agent_id):
             return JsonResponse({'success': False, 'message': 'Agent non trouvé'})
     
     return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})
+
+# views.py
+
+
 
