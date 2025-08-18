@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-
+from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -165,4 +165,24 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
 }
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = "techedgecenter@gmail.com"  # ton email expéditeur
+# EMAIL_HOST_PASSWORD = "ibdv jzmx bgot dpnv"  
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+# # Liste des emails qui recevront les notifications
+# ORDER_NOTIFICATION_EMAILS = ["oumartom2000@gmail.com", "tom.oumar@facsciences-uy1.cm", "hassaballahibrahim666@gmail.com"]
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_PORT = config("EMAIL_PORT", cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", cast=bool)
+EMAIL_USE_SSL = config("EMAIL_USE_SSL", cast=bool, default=False)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# Emails des admins pour les notifications
+ORDER_NOTIFICATION_EMAILS = config("ORDER_NOTIFICATION_EMAILS").split(",")

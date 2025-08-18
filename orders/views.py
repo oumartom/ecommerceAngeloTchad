@@ -7,7 +7,8 @@ from .models import Client, Order, OrderItem
 from products.models import Product, Category
 from .forms import ClientForm, OrderForm
 import json
-
+from django.core.mail import send_mail
+from django.conf import settings
 def home(request):
     """Page d'accueil avec liste des produits"""
     categories = Category.objects.all()
@@ -172,10 +173,7 @@ def checkout(request):
     
     if request.method == 'POST':
         form = ClientForm(request.POST)
-        print("Numéro soumis:", request.POST.get('phone_number'))  # Debug
         if form.is_valid():
-            print("Numéro validé:", form.cleaned_data['phone_number'])  # Debug
-            # ... reste du code ...
             try:
                 with transaction.atomic():
                     # Créer ou récupérer le client
@@ -203,6 +201,30 @@ def checkout(request):
                     # Vider le panier
                     request.session['cart'] = {}
                     
+                    # ✅ Envoi de notification par email aux administrateurs
+                    try:
+                        subject = f"Nouvelle commande #{order.order_number}"
+                        message = (
+                            f"Une nouvelle commande a été passée.\n\n"
+                            f"Numéro de commande : {order.order_number}\n"
+                            f"Client : {client.first_name} {client.last_name}\n"
+                            f"Téléphone : {client.phone_number}\n"
+                            f"Montant total : {order.total_amount} FCFA\n\n"
+                            f"Détails des articles :\n"
+                        )
+                        for item in cart_items:
+                            message += f"- {item['product'].name} x {item['quantity']} = {item['subtotal']} FCFA\n"
+
+                        send_mail(
+                            subject,
+                            message,
+                            settings.DEFAULT_FROM_EMAIL,
+                            settings.ORDER_NOTIFICATION_EMAILS,  # ✅ maintenant sécurisé
+                            fail_silently=False,
+                        )
+                    except Exception as e:
+                        print("Erreur lors de l'envoi d'email :", e)
+
                     messages.success(request, f'Votre commande {order.order_number} a été créée avec succès!')
                     return redirect('orders:order_success', order_id=order.id)
                     
@@ -219,6 +241,87 @@ def checkout(request):
     }
     return render(request, 'orders/checkout.html', context)
 
+# def checkout(request):
+#     """Page de commande"""
+#     cart = request.session.get('cart', {})
+    
+#     if not cart:
+#         messages.warning(request, 'Votre panier est vide.')
+#         return redirect('orders:home')
+    
+#     # Calculer le total et préparer les items
+#     cart_items = []
+#     total = 0
+    
+#     for product_id, quantity in cart.items():
+#         try:
+#             product = Product.objects.get(id=product_id, is_active=True)
+            
+#             # Vérifier le stock avant la commande
+#             if quantity > product.stock_quantity:
+#                 messages.error(request, f'Stock insuffisant pour {product.name}. Disponible: {product.stock_quantity}')
+#                 return redirect('orders:cart')
+            
+#             subtotal = product.price * quantity
+#             cart_items.append({
+#                 'product': product,
+#                 'quantity': quantity,
+#                 'subtotal': subtotal
+#             })
+#             total += subtotal
+#         except Product.DoesNotExist:
+#             messages.error(request, 'Un produit de votre panier n\'est plus disponible.')
+#             return redirect('orders:cart')
+    
+#     if request.method == 'POST':
+#         form = ClientForm(request.POST)
+#         print("Numéro soumis:", request.POST.get('phone_number'))  # Debug
+#         if form.is_valid():
+#             print("Numéro validé:", form.cleaned_data['phone_number'])  # Debug
+#             # ... reste du code ...
+#             try:
+#                 with transaction.atomic():
+#                     # Créer ou récupérer le client
+#                     client_data = form.cleaned_data
+#                     client, created = Client.objects.get_or_create(
+#                         phone_number=client_data['phone_number'],
+#                         defaults=client_data
+#                     )
+                    
+#                     # Créer la commande
+#                     order = Order.objects.create(
+#                         client=client,
+#                         total_amount=total
+#                     )
+                    
+#                     # Créer les items de commande
+#                     for item in cart_items:
+#                         OrderItem.objects.create(
+#                             order=order,
+#                             product=item['product'],
+#                             quantity=item['quantity'],
+#                             unit_price=item['product'].price
+#                         )
+                    
+#                     # Vider le panier
+#                     request.session['cart'] = {}
+                    
+#                     messages.success(request, f'Votre commande {order.order_number} a été créée avec succès!')
+#                     return redirect('orders:order_success', order_id=order.id)
+                    
+#             except Exception as e:
+#                 messages.error(request, 'Une erreur est survenue lors de la création de votre commande.')
+#                 return redirect('orders:checkout')
+#     else:
+#         form = ClientForm()
+    
+#     context = {
+#         'form': form,
+#         'cart_items': cart_items,
+#         'total': total
+#     }
+#     return render(request, 'orders/checkout.html', context)
+
 # def checkoutd(request, product_id):
 #     product = get_object_or_404(Product, id=product_id)
 
@@ -234,16 +337,78 @@ def checkout(request):
 
 #     messages.success(request, f'Votre commande {order.order_number} a été créée avec succès!')
 #     return redirect('orders:order_success', order_id=order.id)
+# def checkoutd(request, product_id):
+#     """Commande directe pour un seul produit"""
+#     try:
+#         product = Product.objects.get(id=product_id, is_active=True)
+#     except Product.DoesNotExist:
+#         messages.error(request, "Produit introuvable.")
+#         return redirect('orders:home')
+
+#     quantity = 1
+#     subtotal = product.price
+#     total = subtotal
+
+#     if request.method == 'POST':
+#         form = ClientForm(request.POST)
+#         if form.is_valid():
+#             try:
+#                 with transaction.atomic():
+#                     # Ajouter +235 s’il n’est pas encore là
+#                     phone_raw = form.cleaned_data['phone_number']
+#                     full_phone = f'+235{phone_raw}' if not phone_raw.startswith('+235') else phone_raw
+
+#                     client_data = form.cleaned_data
+#                     client, _ = Client.objects.get_or_create(
+#                         phone_number=full_phone,
+#                         defaults={**client_data, 'phone_number': full_phone}
+#                     )
+
+#                     order = Order.objects.create(client=client, total_amount=total)
+#                     OrderItem.objects.create(order=order, product=product, quantity=quantity, unit_price=product.price)
+
+#                     messages.success(request, f"Commande {order.order_number} créée avec succès.")
+#                     return redirect('orders:order_success', order_id=order.id)
+#             except Exception as e:
+#                 messages.error(request, "Erreur lors de la commande.")
+#                 return redirect('orders:checkoutd', product_id=product.id)
+#     else:
+#         form = ClientForm()
+
+#     context = {
+#         'form': form,
+#         'cart_items': [{
+#             'product': product,
+#             'quantity': quantity,
+#             'subtotal': subtotal,
+#         }],
+#         'total': total,
+#     }
+#     return render(request, 'orders/checkoutd.html', context)
+from django.core.mail import send_mail
+from django.conf import settings
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import Product, Client, Order, OrderItem
+from .forms import ClientForm
+
 def checkoutd(request, product_id):
-    """Commande directe pour un seul produit"""
+    """Commande directe pour un produit avec gestion de quantité"""
     try:
         product = Product.objects.get(id=product_id, is_active=True)
     except Product.DoesNotExist:
         messages.error(request, "Produit introuvable.")
         return redirect('orders:home')
 
-    quantity = 1
-    subtotal = product.price
+    quantity = int(request.POST.get('quantity', 1))  # Quantité choisie par l'utilisateur
+    if quantity < 1:
+        quantity = 1
+
+    subtotal = product.price * quantity
     total = subtotal
 
     if request.method == 'POST':
@@ -251,7 +416,7 @@ def checkoutd(request, product_id):
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Ajouter +235 s’il n’est pas encore là
+                    # Ajouter +235 si nécessaire
                     phone_raw = form.cleaned_data['phone_number']
                     full_phone = f'+235{phone_raw}' if not phone_raw.startswith('+235') else phone_raw
 
@@ -261,8 +426,35 @@ def checkoutd(request, product_id):
                         defaults={**client_data, 'phone_number': full_phone}
                     )
 
+                    # Créer la commande
                     order = Order.objects.create(client=client, total_amount=total)
-                    OrderItem.objects.create(order=order, product=product, quantity=quantity, unit_price=product.price)
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=quantity,
+                        unit_price=product.price
+                    )
+
+                    # Envoi email aux admins
+                    try:
+                        subject = f"Nouvelle commande #{order.order_number}"
+                        message = (
+                            f"Une nouvelle commande a été passée.\n\n"
+                            f"Numéro de commande : {order.order_number}\n"
+                            f"Client : {client.first_name} {client.last_name}\n"
+                            f"Téléphone : {client.phone_number}\n"
+                            f"Montant total : {total} FCFA\n"
+                            f"Détails des articles :\n- {product.name} x {quantity} = {subtotal} FCFA\n"
+                        )
+                        send_mail(
+                            subject,
+                            message,
+                            settings.DEFAULT_FROM_EMAIL,
+                            settings.ORDER_NOTIFICATION_EMAILS,
+                            fail_silently=False,
+                        )
+                    except Exception as e:
+                        print("Erreur lors de l'envoi d'email :", e)
 
                     messages.success(request, f"Commande {order.order_number} créée avec succès.")
                     return redirect('orders:order_success', order_id=order.id)
@@ -274,14 +466,87 @@ def checkoutd(request, product_id):
 
     context = {
         'form': form,
-        'cart_items': [{
-            'product': product,
-            'quantity': quantity,
-            'subtotal': subtotal,
-        }],
+        'product': product,
+        'quantity': quantity,
+        'subtotal': subtotal,
         'total': total,
     }
     return render(request, 'orders/checkoutd.html', context)
+
+
+
+# def checkoutd(request, product_id):
+#     """Commande directe pour un seul produit"""
+#     try:
+#         product = Product.objects.get(id=product_id, is_active=True)
+#     except Product.DoesNotExist:
+#         messages.error(request, "Produit introuvable.")
+#         return redirect('orders:home')
+
+#     quantity = 1
+#     subtotal = product.price
+#     total = subtotal
+
+#     if request.method == 'POST':
+#         form = ClientForm(request.POST)
+#         if form.is_valid():
+#             try:
+#                 with transaction.atomic():
+#                     # Ajouter +235 si nécessaire
+#                     phone_raw = form.cleaned_data['phone_number']
+#                     full_phone = f'+235{phone_raw}' if not phone_raw.startswith('+235') else phone_raw
+
+#                     client_data = form.cleaned_data
+#                     client, _ = Client.objects.get_or_create(
+#                         phone_number=full_phone,
+#                         defaults={**client_data, 'phone_number': full_phone}
+#                     )
+
+#                     # Créer la commande
+#                     order = Order.objects.create(client=client, total_amount=total)
+#                     OrderItem.objects.create(order=order, product=product, quantity=quantity, unit_price=product.price)
+
+#                     # ✅ Envoi email aux administrateurs
+#                     try:
+#                         subject = f"Nouvelle commande #{order.order_number}"
+#                         message = (
+#                             f"Une nouvelle commande a été passée.\n\n"
+#                             f"Numéro de commande : {order.order_number}\n"
+#                             f"Client : {client.first_name} {client.last_name}\n"
+#                             f"Téléphone : {client.phone_number}\n"
+#                             f"Montant total : {total} FCFA\n"
+#                             f"Détails des articles :\n- {product.name} x {quantity} = {subtotal} FCFA\n"
+#                         )
+
+#                         send_mail(
+#                             subject,
+#                             message,
+#                             settings.DEFAULT_FROM_EMAIL,
+#                             settings.ORDER_NOTIFICATION_EMAILS,  # ✅ maintenant sécurisé
+#                             fail_silently=False,
+#                         )
+#                     except Exception as e:
+#                         print("Erreur lors de l'envoi d'email :", e)
+
+#                     messages.success(request, f"Commande {order.order_number} créée avec succès.")
+#                     return redirect('orders:order_success', order_id=order.id)
+#             except Exception as e:
+#                 messages.error(request, "Erreur lors de la commande.")
+#                 return redirect('orders:checkoutd', product_id=product.id)
+#     else:
+#         form = ClientForm()
+
+#     context = {
+#         'form': form,
+#         'cart_items': [{
+#             'product': product,
+#             'quantity': quantity,
+#             'subtotal': subtotal,
+#         }],
+#         'total': total,
+#     }
+#     return render(request, 'orders/checkoutd.html', context)
+
 
 
 def order_success(request, order_id):
